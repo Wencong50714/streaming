@@ -1,0 +1,31 @@
+[project]
+name = "StreamVideo"
+version = "0.1.0"
+
+dependencies = [
+    "opencv-python-headless",
+    "accelerate",
+    "torch",
+    "torchvision",
+    "transformers",
+    "numpy",
+    "pillow",
+    "omegaconf>=2.0.0",
+]
+
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# (E: Error, F: Pyflakes, I: isort, "W292": whitespace)
+select = ["E", "F", "I", "W292"]
+ignore = ["D203"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

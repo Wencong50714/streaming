@@ -1,0 +1,13 @@
+# Video-Language Model Configuration
+
+# Video Sampling
+sample_fps: 1  # Video sampling FPS
+encode_frame_interval: 4  # Interval of frames to encode
+
+# Query Embedding Match
+topk: 8  # Top K matches for embedding
+router_strategy: "cos_sim"  # Router strategy: random, router, cos_sim
+
+# Memory Hyper Parameters
+key_frame_buffer_size: 5  # Size of key frame buffer
+key_frame_match_ratio: 0.7  # Match ratio for key frames
