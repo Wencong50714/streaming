@@ -1,7 +1,9 @@
 from typing import List
+from statistics import mean, median
 
 import torch
 
+from src.core.metrics import metrics_manager
 from src.memory.buffer import KeyFrameBuffer, Frame, KeyFrame
 
 class Memory:
@@ -34,6 +36,14 @@ class Memory:
             video_seq (TotalFrames, img_tokens, D): A tensor containing the selected key frame embeddings.
         """
         print("Key Frame Num = {}".format(len(self.key_frames)))
+
+        # Calculate average and median of key frame frames counts
+        if self.key_frames:
+            frame_counts = [kf.get_frame_count() for kf in self.key_frames]
+            avg_frame_count = mean(frame_counts)
+            median_frame_count = median(frame_counts)
+            metrics_manager.record("Key Frame Avg Frames Count", avg_frame_count)
+            metrics_manager.record("Key Frame Median Frames Count", median_frame_count)
 
         if not self.key_frames:
             buffer_emb = self.buffer.flush_detail()

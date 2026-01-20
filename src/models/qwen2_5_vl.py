@@ -76,7 +76,7 @@ class Qwen2_5VL_7B(Model):
         sample_fps = config.sample_fps
         frame_interval = max(1, int(round(fps / sample_fps))) if sample_fps > 0 else 1
 
-        encode_frame_interval = config.encode_frame_interval
+        clip_len = config.clip_len
 
         frames_buffer = []
         sampled_frame_idx = 0
@@ -87,7 +87,6 @@ class Qwen2_5VL_7B(Model):
             if not ret:
                 break
 
-            # TODO debug here
             if original_frame_idx % frame_interval == 0:
                 # BGR to RGB
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -95,7 +94,7 @@ class Qwen2_5VL_7B(Model):
                 frames_buffer.append(frame)
                 sampled_frame_idx += 1
 
-                if len(frames_buffer) == encode_frame_interval:
+                if len(frames_buffer) == clip_len:
                     frames_batch = np.stack(frames_buffer)  # (Batch, H, W, C)
                     embeddings, grid = self._frames_encode(frames_batch)
                     embeddings = embeddings

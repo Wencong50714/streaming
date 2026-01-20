@@ -61,3 +61,6 @@ class KeyFrame:
             frame_ids (List[int]): A list of frame IDs corresponding to the embeddings.
         """
         return torch.stack(self.frame_embeddings, dim=0), self.frame_ids
+    
+    def get_frame_count(self) -> int:
+        return len(self.frame_ids)
