@@ -46,11 +46,21 @@ class KeyFrameBuffer:
                     return evicted_kf  # other case return None
             else:
                 best_kf_index = similarities.index(max_similarity)
-                self.buffer[best_kf_index].add_frame(frame)
-                # Record merge metrics
-                metrics_manager.record("Merged Frame IDs", frame.frame_id)
-                metrics_manager.record("Merge Similarity", max_similarity)
-                metrics_manager.record("Total Merge Count")
+                best_kf = self.buffer[best_kf_index]
+                
+                # Check if the key frame has reached max_frame_set_num limit
+                if config.max_frame_set_num is not None and best_kf.get_frame_count() >= config.max_frame_set_num:
+                    # Cannot merge, create a new key frame instead
+                    self._new_key_frame(frame)
+                    if len(self.buffer) > self.max_size:
+                        evicted_kf = self.buffer.pop(0)
+                        return evicted_kf
+                else:
+                    best_kf.add_frame(frame)
+                    # Record merge metrics
+                    metrics_manager.record("Merged Frame IDs", frame.frame_id)
+                    metrics_manager.record("Merge Similarity", max_similarity)
+                    metrics_manager.record("Total Merge Count")
 
     def flush_key_frame(self) -> List[KeyFrame]:
         return self.buffer

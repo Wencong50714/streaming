@@ -5,8 +5,7 @@ import numpy as np
 import torch
 from transformers import (
     Qwen2_5_VLForConditionalGeneration,
-    AutoProcessor,
-    AutoTokenizer,
+    AutoProcessor
 )
 
 from src.core.config import config
@@ -30,7 +29,14 @@ class Qwen2_5VL_7B(Model):
 
         self.processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
         self.tokenizer = self.processor.tokenizer
-        
+        # self.tokenizer.chat_template = (
+        #     "{% for message in messages %}"
+        #     "{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}"
+        #     "{% endfor %}"
+        #     "{% if add_generation_prompt %}"
+        #     "{{ '<|im_start|>assistant\n' }}"
+        #     "{% endif %}"
+        # )
         self.cached_grids = []
 
     def _frames_encode(self, frames: np.ndarray) -> torch.Tensor:

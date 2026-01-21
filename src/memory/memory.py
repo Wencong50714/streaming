@@ -37,14 +37,6 @@ class Memory:
         """
         print("Key Frame Num = {}".format(len(self.key_frames)))
 
-        # Calculate average and median of key frame frames counts
-        if self.key_frames:
-            frame_counts = [kf.get_frame_count() for kf in self.key_frames]
-            avg_frame_count = mean(frame_counts)
-            median_frame_count = median(frame_counts)
-            metrics_manager.record("Key Frame Avg Frames Count", avg_frame_count)
-            metrics_manager.record("Key Frame Median Frames Count", median_frame_count)
-
         if not self.key_frames:
             buffer_emb = self.buffer.flush_detail()
             return buffer_emb
@@ -55,16 +47,49 @@ class Memory:
             
             assert len(detail_list) == len(merged_list) == mask.shape[0]
             
-            seq_emb_list = []
+            # Build adjacency mask: msk=0 positions that are adjacent to msk=1 positions
+            k = mask.shape[0]
+            adjacent_mask = torch.zeros(k, dtype=torch.bool)
             
-            for detail, mrg, msk in zip(detail_list, merged_list, mask):
+            for i in range(k):
+                if mask[i]:
+                    # Current position is 1, mark itself as selected
+                    adjacent_mask[i] = True
+                    # Mark adjacent positions (i-1 and i+1) if they are 0
+                    if i > 0 and not mask[i-1]:
+                        adjacent_mask[i-1] = True
+                    if i < k-1 and not mask[i+1]:
+                        adjacent_mask[i+1] = True
+            
+            seq_emb_list = []
+            meg_emb_cnt = 0
+            
+            for i, (detail, mrg, msk) in enumerate(zip(detail_list, merged_list, mask)):
+                if not adjacent_mask[i]:
+                    # Skip this position if it's not adjacent to any mask=1 position
+                    continue
+                    
                 if msk:
                     seq_emb_list.append(detail)
                 else:
                     seq_emb_list.append(mrg)
+                    meg_emb_cnt += 1
             
-            seq_emb = torch.cat(seq_emb_list, dim=0)  # (num_frames, img_tokens, D)
+            seq_emb = torch.cat(seq_emb_list, dim=0) if seq_emb_list else torch.empty(0, detail_list[0].shape[1], detail_list[0].shape[2])  # (num_frames, img_tokens, D)
             buffer_emb = self.buffer.flush_detail()  # (B, img_tokens, D)
             
+            # Add Statistics
+            if self.key_frames:
+                frame_counts = [kf.get_frame_count() for kf in self.key_frames]
+                avg_frame_count = mean(frame_counts)
+                selected_detail_frame_ids = [kf.get_details()[1] for kf, msk in zip(self.key_frames, mask) if msk]
+
+                median_frame_count = median(frame_counts)
+                metrics_manager.record("Key Frame Avg Frames Count", avg_frame_count)
+                metrics_manager.record("Key Frame Median Frames Count", median_frame_count)
+                metrics_manager.record("Buffer Frame Count", buffer_emb.shape[0])
+                metrics_manager.record("Merged Embedding Count", meg_emb_cnt)
+                metrics_manager.record("Selected Detailed Frame IDs", selected_detail_frame_ids)
+                
             # Concatenate along the temporal/frame dimension (dim 0)
             return torch.cat([seq_emb, buffer_emb], dim=0)

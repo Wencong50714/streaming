@@ -9,5 +9,6 @@ topk: 8  # Top K matches for embedding
 router_strategy: "cos_sim_fine"  # Router strategy: random, router, cos_sim_fine, cos_sim_coarse
 
 # Memory Hyper Parameters
-key_frame_buffer_size: 5  # Size of key frame buffer
-key_frame_match_ratio: 0.5  # Match ratio for key frames
+key_frame_buffer_size: 3  # Size of key frame buffer
+key_frame_match_ratio: 0.6  # Match ratio for key frames
+max_frame_set_num: 5  # Maximum number of frames that can be merged into a single key frame
