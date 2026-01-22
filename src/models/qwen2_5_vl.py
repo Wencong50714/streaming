@@ -65,7 +65,6 @@ class Qwen2_5VL_7B(Model):
             )
 
         embeddings = embeddings.view(num_frames, -1, embeddings.shape[-1])
-        print("Encode {} frames time: {:.2f}s".format(num_frames, time.perf_counter() - t0))
         return embeddings, image_grid_thw
     
     def _video_preprocess(self, video_file_name):
@@ -111,7 +110,6 @@ class Qwen2_5VL_7B(Model):
                     for i, frame_emb in enumerate(embeddings):
                         frame_id = start_id + i
                         self.memory.add_frame(Frame(frame_id=frame_id, embedding=frame_emb))
-                        print(f"Processed batch frame, ID: {frame_id}")
 
                     frames_buffer = []
 

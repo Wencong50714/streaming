@@ -6,7 +6,8 @@ clip_len: 4  # video clip len
 
 # Query Embedding Match
 topk: 8  # Top K matches for embedding
-router_strategy: "cos_sim_fine"  # Router strategy: random, router, cos_sim_fine, cos_sim_coarse
+# Router strategy: random, router, cos_sim_fine, cos_sim_coarse, cross-attn
+router_strategy: "cross-attn"
 
 # Memory Hyper Parameters
 key_frame_buffer_size: 3  # Size of key frame buffer
