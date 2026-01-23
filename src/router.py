@@ -93,9 +93,9 @@ class Router:
         # -------------------------------------------------------
         # Generate Mask (for similarity-based strategies)
         # -------------------------------------------------------
-        _, topk_indices = torch.topk(similarities, k)            
+        probs = F.softmax(similarities / config.temperature, dim=0)
+        selected_indices = torch.multinomial(probs, num_samples=k, replacement=False)
         mask = torch.zeros(N, dtype=torch.bool, device=key_embeddings.device)
-        mask[topk_indices] = True
-        
+        mask[selected_indices] = True
         return mask
             

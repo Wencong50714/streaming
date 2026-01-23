@@ -1,4 +1,6 @@
+import os
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -19,6 +21,8 @@ class Qwen2_5VL_7B(Model):
 
     def __init__(self, model_path):
         super().__init__(model_path)
+        
+        self.model_name = "Qwen2_5VL_7B"
 
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_path, 
@@ -38,6 +42,65 @@ class Qwen2_5VL_7B(Model):
         #     "{% endif %}"
         # )
         self.cached_grids = []
+    
+    def _get_embedding_cache_path(self, video_file_name: str) -> Path:
+        """Get the cache file path for video embeddings.
+        
+        Args:
+            video_file_name: Path to the video file
+            
+        Returns:
+            Path to the cache file
+        """
+        cache_dir = Path(config.embedding_cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        
+        video_name = Path(video_file_name).stem
+        cache_filename = f"{self.model_name}_{video_name}.pt"
+        return cache_dir / cache_filename
+    
+    def _load_embeddings_from_cache(self, video_file_name: str):
+        """Try to load embeddings from disk cache.
+        
+        Args:
+            video_file_name: Path to the video file
+            
+        Returns:
+            Tuple of (embeddings_list, grids_list) if cache exists, None otherwise
+        """
+        cache_path = self._get_embedding_cache_path(video_file_name)
+        
+        if cache_path.exists():
+            try:
+                cache_data = torch.load(cache_path, map_location=self.model.device)
+                print(f"Loaded embeddings from cache: {cache_path}")
+                return cache_data["embeddings"], cache_data["grids"]
+            except Exception as e:
+                print(f"Failed to load embeddings from cache: {e}")
+                return None
+        else:
+            print(f"No cached embeddings found at: {cache_path}")
+            return None
+    
+    def _save_embeddings_to_cache(self, video_file_name: str, embeddings_list, grids_list):
+        """Save embeddings to disk cache.
+        
+        Args:
+            video_file_name: Path to the video file
+            embeddings_list: List of embedding tensors for each clip
+            grids_list: List of grid tensors for each clip
+        """
+        cache_path = self._get_embedding_cache_path(video_file_name)
+        
+        try:
+            cache_data = {
+                "embeddings": embeddings_list,
+                "grids": grids_list,
+            }
+            torch.save(cache_data, cache_path)
+            print(f"Saved embeddings to cache: {cache_path}")
+        except Exception as e:
+            print(f"Failed to save embeddings to cache: {e}")
 
     def _frames_encode(self, frames: np.ndarray) -> torch.Tensor:
         """Encode frames into embedding
@@ -70,6 +133,28 @@ class Qwen2_5VL_7B(Model):
     def _video_preprocess(self, video_file_name):
         self.cached_grids = []
         t0 = time.perf_counter()
+        
+        reuse_embeddings = config.reuse_embeddings
+        
+        # Try to load embeddings from cache if reuse_embeddings is enabled
+        if reuse_embeddings:
+            cached_data = self._load_embeddings_from_cache(video_file_name)
+            if cached_data is not None:
+                embeddings_list, grids_list = cached_data
+                
+                # Update memory using for loop
+                frame_id = 0
+                for clip_embeddings, grid in zip(embeddings_list, grids_list):
+                    self.cached_grids.append(grid.to(self.model.device))
+                    clip_embeddings = clip_embeddings.to(self.model.device)
+                    
+                    for frame_emb in clip_embeddings:
+                        self.memory.add_frame(Frame(frame_id=frame_id, embedding=frame_emb))
+                        frame_id += 1
+                
+                duration = time.perf_counter() - t0
+                print(f"Loaded {frame_id} frames from cache, Load Time: {duration:.2f}s")
+                return
 
         cap = cv2.VideoCapture(video_file_name)
 
@@ -86,6 +171,10 @@ class Qwen2_5VL_7B(Model):
         frames_buffer = []
         sampled_frame_idx = 0
         original_frame_idx = 0
+        
+        # Store embeddings for caching
+        embeddings_to_cache = []
+        grids_to_cache = []
 
         while True:
             ret, frame = cap.read()
@@ -104,6 +193,10 @@ class Qwen2_5VL_7B(Model):
                     embeddings, grid = self._frames_encode(frames_batch)
                     embeddings = embeddings
                     self.cached_grids.append(grid)
+                    
+                    # Store for caching (move to CPU to save GPU memory)
+                    embeddings_to_cache.append(embeddings.cpu())
+                    grids_to_cache.append(grid.cpu())
 
                     start_id = sampled_frame_idx - len(frames_buffer)
 
@@ -120,6 +213,10 @@ class Qwen2_5VL_7B(Model):
             frames_batch = np.stack(frames_buffer)
             embeddings, grid = self._frames_encode(frames_batch)
             self.cached_grids.append(grid)
+            
+            # Store for caching
+            embeddings_to_cache.append(embeddings.cpu())
+            grids_to_cache.append(grid.cpu())
 
             start_id = sampled_frame_idx - len(frames_buffer)
 
@@ -128,6 +225,10 @@ class Qwen2_5VL_7B(Model):
                 self.memory.add_frame(Frame(frame_id=frame_id, embedding=frame_emb))
 
         cap.release()
+        
+        # Save embeddings to cache if reuse_embeddings is enabled
+        if reuse_embeddings and embeddings_to_cache:
+            self._save_embeddings_to_cache(video_file_name, embeddings_to_cache, grids_to_cache)
 
         duration = time.perf_counter() - t0
         print("Video Origin Time: {:.2f}s, Sampled Frame Count: {}, Sample FPS: {}, Preprocess Time: {:.2f}s".format(

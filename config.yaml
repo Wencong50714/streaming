@@ -2,12 +2,17 @@
 
 # Video Sampling
 sample_fps: 1  # Video sampling FPS
-clip_len: 4  # video clip len
+clip_len: 8  # video clip len
+
+# Embedding Cache
+reuse_embeddings: true  # Whether to reuse cached embeddings from disk
+embedding_cache_dir: "cache/embeddings"  # Directory to cache embeddings
 
 # Query Embedding Match
 topk: 8  # Top K matches for embedding
 # Router strategy: random, router, cos_sim_fine, cos_sim_coarse, cross-attn
 router_strategy: "cross-attn"
+temperature: 0.1  # Temperature for softmax to generate mask
 
 # Memory Hyper Parameters
 key_frame_buffer_size: 3  # Size of key frame buffer

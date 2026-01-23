@@ -1,6 +1,7 @@
 design_doc.md
 bench/
 uv.lock
+cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
