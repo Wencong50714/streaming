@@ -1,10 +1,11 @@
-from pathlib import Path
+import time
 from typing import Optional
 
 import torch
 import torch.nn.functional as F
 
 from src.core.config import config
+from src.core.metrics import metrics_manager
 
 class Router:
     """Router for selecting key frames based on query-key relevance.
@@ -20,6 +21,7 @@ class Router:
         pass
 
     def select(self, query_embeddings: torch.Tensor, key_embeddings: torch.Tensor) -> torch.Tensor:
+        t0 = time.perf_counter()
         """Compare the Query embedding with the sequence embeddings and return a mask.
 
         Args:
@@ -90,12 +92,18 @@ class Router:
         else:
             raise NotImplementedError(f"Router strategy {config.router_strategy} not implemented.")
 
+        duration = time.perf_counter() - t0
+        metrics_manager.record("Select cost", duration)
+
         # -------------------------------------------------------
         # Generate Mask (for similarity-based strategies)
         # -------------------------------------------------------
-        probs = F.softmax(similarities / config.temperature, dim=0)
-        selected_indices = torch.multinomial(probs, num_samples=k, replacement=False)
+        _, topk_indices = torch.topk(similarities, k)            
         mask = torch.zeros(N, dtype=torch.bool, device=key_embeddings.device)
-        mask[selected_indices] = True
+        mask[topk_indices] = True
+        # probs = F.softmax(similarities / config.temperature, dim=0)
+        # selected_indices = torch.multinomial(probs, num_samples=k, replacement=False)
+        # mask = torch.zeros(N, dtype=torch.bool, device=key_embeddings.device)
+        # mask[selected_indices] = True
         return mask
             

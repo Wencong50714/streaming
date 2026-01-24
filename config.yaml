@@ -12,7 +12,7 @@ embedding_cache_dir: "cache/embeddings"  # Directory to cache embeddings
 topk: 8  # Top K matches for embedding
 # Router strategy: random, router, cos_sim_fine, cos_sim_coarse, cross-attn
 router_strategy: "cross-attn"
-temperature: 0.1  # Temperature for softmax to generate mask
+# temperature: 0.1  # Temperature for softmax to generate mask
 
 # Memory Hyper Parameters
 key_frame_buffer_size: 3  # Size of key frame buffer
