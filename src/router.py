@@ -21,6 +21,8 @@ class Router:
         pass
 
     def select(self, query_embeddings: torch.Tensor, key_embeddings: torch.Tensor) -> torch.Tensor:
+        if key_embeddings.is_cuda:
+            torch.cuda.synchronize()
         t0 = time.perf_counter()
         """Compare the Query embedding with the sequence embeddings and return a mask.
 
@@ -92,8 +94,10 @@ class Router:
         else:
             raise NotImplementedError(f"Router strategy {config.router_strategy} not implemented.")
 
+        if key_embeddings.is_cuda:
+            torch.cuda.synchronize()
         duration = time.perf_counter() - t0
-        metrics_manager.record("Select cost", duration)
+        metrics_manager.record("Select Cost", duration)
 
         # -------------------------------------------------------
         # Generate Mask (for similarity-based strategies)

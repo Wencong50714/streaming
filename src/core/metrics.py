@@ -100,7 +100,7 @@ class ValueMetric(Metric):
         if self._value is None:
             return None
         if isinstance(self._value, float):
-            return f"{self.name}: {self._value:.2f}s"
+            return f"{self.name}: {self._value:.6f}s"
         return f"{self.name}: {self._value}"
 
 
